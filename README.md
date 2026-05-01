@@ -53,29 +53,6 @@ Configure `tebex.api-key` with your Tebex server secret. The plugin uses `GET ht
 - `/enthusiadonors top monthly`
 - `/enthusiadonors debug <player>`
 
-## Colored Placeholders
-
-EnthusiaDonors does not add reset codes to placeholder values, so a color placed before a placeholder may work if the displaying plugin translates color codes after PlaceholderAPI.
-
-For reliable color output, use the built-in color wrapper:
-
-```text
-%enthusiadonors_color_&c_monthly_top_1_name%
-%enthusiadonors_color_#ff0000_monthly_top_1_amount%
-%enthusiadonors_color_<#ff0000>_monthly_top_1_uuid%
-%enthusiadonors_color_</#ff0000>_alltime_top_1_name%
-```
-
-Supported color formats:
-
-- `&c`, `&6`, `&l`, and other regular legacy `&` codes
-- `#ff0000`
-- `&#ff0000`
-- `<#ff0000>`
-- `</#ff0000>`
-
-The color wrapper works with any existing placeholder params after the color token.
-
 ## Testing
 
 Set `testing.fake-data-enabled: true`, or run `/enthusiadonors refresh` with no Tebex key configured, to exercise placeholders and commands with deterministic fake donor data.

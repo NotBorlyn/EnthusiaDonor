@@ -12,15 +12,8 @@ import org.jetbrains.annotations.NotNull;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class PlaceholderHook extends PlaceholderExpansion {
-    private static final Pattern HEX_TAG = Pattern.compile("^</?#([0-9a-fA-F]{6})>$");
-    private static final Pattern RAW_HEX = Pattern.compile("^#([0-9a-fA-F]{6})$");
-    private static final Pattern AMP_HEX = Pattern.compile("&?#([0-9a-fA-F]{6})");
-    private static final String COLOR_PREFIX = "color_";
-
     private final Plugin plugin;
     private final ConfigManager configManager;
     private final DonorCache cache;
@@ -53,14 +46,6 @@ public final class PlaceholderHook extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer player, @NotNull String params) {
-        ColorRequest colorRequest = extractColor(params);
-        if (colorRequest != null) {
-            return colorRequest.colorCode() + resolvePlaceholder(player, colorRequest.remainingParams());
-        }
-        return resolvePlaceholder(player, params);
-    }
-
-    private String resolvePlaceholder(OfflinePlayer player, String params) {
         DonorsConfig config = configManager.get();
         DonorCache.Snapshot snapshot = cache.snapshot();
 
@@ -113,71 +98,6 @@ public final class PlaceholderHook extends PlaceholderExpansion {
         return "";
     }
 
-    private ColorRequest extractColor(String params) {
-        if (!params.toLowerCase().startsWith(COLOR_PREFIX)) {
-            return null;
-        }
-        String withoutPrefix = params.substring(COLOR_PREFIX.length());
-        int delimiter = withoutPrefix.indexOf('_');
-        if (delimiter <= 0 || delimiter == withoutPrefix.length() - 1) {
-            return null;
-        }
-        String rawColor = withoutPrefix.substring(0, delimiter);
-        String colorCode = parseColor(rawColor);
-        if (colorCode.isEmpty()) {
-            return null;
-        }
-        return new ColorRequest(colorCode, withoutPrefix.substring(delimiter + 1));
-    }
-
-    private String parseColor(String rawColor) {
-        String color = rawColor.trim();
-        Matcher hexTag = HEX_TAG.matcher(color);
-        if (hexTag.matches()) {
-            return legacyHex(hexTag.group(1));
-        }
-        Matcher rawHex = RAW_HEX.matcher(color);
-        if (rawHex.matches()) {
-            return legacyHex(rawHex.group(1));
-        }
-        Matcher ampHex = AMP_HEX.matcher(color);
-        if (ampHex.matches()) {
-            return legacyHex(ampHex.group(1));
-        }
-        return translateLegacyCodes(color);
-    }
-
-    private String translateLegacyCodes(String value) {
-        StringBuilder result = new StringBuilder(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char current = value.charAt(i);
-            if (current == '&' && i + 1 < value.length() && isLegacyCode(value.charAt(i + 1))) {
-                result.append('§').append(Character.toLowerCase(value.charAt(i + 1)));
-                i++;
-                continue;
-            }
-            if (current == '§' && i + 1 < value.length() && isLegacyCode(value.charAt(i + 1))) {
-                result.append('§').append(Character.toLowerCase(value.charAt(i + 1)));
-                i++;
-                continue;
-            }
-            result.append(current);
-        }
-        return result.toString();
-    }
-
-    private boolean isLegacyCode(char code) {
-        return "0123456789abcdefklmnorABCDEFKLMNOR".indexOf(code) >= 0;
-    }
-
-    private String legacyHex(String hex) {
-        StringBuilder result = new StringBuilder("§x");
-        for (char c : hex.toLowerCase().toCharArray()) {
-            result.append('§').append(c);
-        }
-        return result.toString();
-    }
-
     private String playerValue(OfflinePlayer player, String params, DonorCache.Snapshot snapshot, DonorsConfig config) {
         Optional<DonorEntry> entry = player == null ? Optional.empty() : snapshot.byUuid(player.getUniqueId());
         return switch (params.toLowerCase()) {
@@ -211,8 +131,5 @@ public final class PlaceholderHook extends PlaceholderExpansion {
             case "rank" -> config.emptyRank();
             default -> "";
         };
-    }
-
-    private record ColorRequest(String colorCode, String remainingParams) {
     }
 }
