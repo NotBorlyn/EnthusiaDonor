@@ -1,0 +1,45 @@
+tebex:
+  api-key: ""
+  refresh-interval-minutes: 10
+  timeout-seconds: 10
+  max-retries: 3
+  max-pages: 1000
+  count-taxes-fees-if-available: true
+
+counting:
+  source: "tebex_payments_only"
+  count-zero-dollar-payments: false
+  count-manual-payments: false
+  count-refunded-payments: false
+  count-chargeback-payments: false
+  included-package-ids: []
+  excluded-package-ids: []
+  excluded-transaction-ids:
+    - "tbx-496726a83565-ca380a"
+    - "tbx-460726a83263-a5561d"
+    - "tbx-964726a82701-afe298"
+    - "tbx-555726a82154-46565a"
+    - "tbx-976726a81727-5f4c9e"
+    - "tbx-374726a80234-30c216"
+
+leaderboards:
+  timezone: "America/Chicago"
+  currency-symbol: "$"
+  show-cents: true
+  top-size: 10
+  empty-name: "None"
+  empty-amount: "$0.00"
+  empty-rank: "-"
+
+cache:
+  use-sqlite: true
+  save-json-export: false
+  json-export-path: "plugins/EnthusiaDonors/public/donors.json"
+
+privacy:
+  expose-raw-payment-data: false
+  hash-payment-ids: true
+
+testing:
+  fake-data-enabled: false
+  fake-player-count: 12

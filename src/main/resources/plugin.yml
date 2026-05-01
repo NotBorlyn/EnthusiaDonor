@@ -1,0 +1,30 @@
+name: EnthusiaDonors
+version: ${version}
+main: com.enthusia.donors.EnthusiaDonorsPlugin
+api-version: "1.20"
+author: Enthusia
+softdepend:
+  - PlaceholderAPI
+commands:
+  enthusiadonors:
+    description: Manage EnthusiaDonors donor leaderboards.
+    usage: /enthusiadonors <reload|refresh|status|top|debug>
+    aliases:
+      - edonors
+permissions:
+  enthusiadonors.admin:
+    description: Allows all EnthusiaDonors admin commands.
+    default: op
+    children:
+      enthusiadonors.reload: true
+      enthusiadonors.refresh: true
+      enthusiadonors.status: true
+      enthusiadonors.debug: true
+  enthusiadonors.reload:
+    default: op
+  enthusiadonors.refresh:
+    default: op
+  enthusiadonors.status:
+    default: op
+  enthusiadonors.debug:
+    default: op
