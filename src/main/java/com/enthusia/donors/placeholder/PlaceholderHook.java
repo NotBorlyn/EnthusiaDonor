@@ -1,9 +1,11 @@
 package com.enthusia.donors.placeholder;
 
 import com.enthusia.donors.cache.DonorCache;
+import com.enthusia.donors.cache.PlayerStatCache;
 import com.enthusia.donors.config.ConfigManager;
 import com.enthusia.donors.config.DonorsConfig;
 import com.enthusia.donors.model.DonorEntry;
+import com.enthusia.donors.model.PlayerStatEntry;
 import me.clip.placeholderapi.expansion.PlaceholderExpansion;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.plugin.Plugin;
@@ -12,23 +14,18 @@ import org.jetbrains.annotations.NotNull;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 public final class PlaceholderHook extends PlaceholderExpansion {
-    private static final Pattern HEX_TAG = Pattern.compile("^</?#([0-9a-fA-F]{6})>$");
-    private static final Pattern RAW_HEX = Pattern.compile("^#([0-9a-fA-F]{6})$");
-    private static final Pattern AMP_HEX = Pattern.compile("&?#([0-9a-fA-F]{6})");
-    private static final String COLOR_PREFIX = "color_";
-
     private final Plugin plugin;
     private final ConfigManager configManager;
     private final DonorCache cache;
+    private final PlayerStatCache playerStatCache;
 
-    public PlaceholderHook(Plugin plugin, ConfigManager configManager, DonorCache cache) {
+    public PlaceholderHook(Plugin plugin, ConfigManager configManager, DonorCache cache, PlayerStatCache playerStatCache) {
         this.plugin = plugin;
         this.configManager = configManager;
         this.cache = cache;
+        this.playerStatCache = playerStatCache;
     }
 
     @Override
@@ -53,14 +50,6 @@ public final class PlaceholderHook extends PlaceholderExpansion {
 
     @Override
     public String onRequest(OfflinePlayer player, @NotNull String params) {
-        ColorRequest colorRequest = extractColor(params);
-        if (colorRequest != null) {
-            return colorRequest.colorCode() + resolvePlaceholder(player, colorRequest.remainingParams());
-        }
-        return resolvePlaceholder(player, params);
-    }
-
-    private String resolvePlaceholder(OfflinePlayer player, String params) {
         DonorsConfig config = configManager.get();
         DonorCache.Snapshot snapshot = cache.snapshot();
 
@@ -70,8 +59,17 @@ public final class PlaceholderHook extends PlaceholderExpansion {
         if (params.equalsIgnoreCase("monthly_count")) {
             return String.valueOf(snapshot.monthly().size());
         }
+        if (params.equalsIgnoreCase("kills_count")) {
+            return String.valueOf(playerStatCache.snapshot().kills().size());
+        }
+        if (params.equalsIgnoreCase("deaths_count")) {
+            return String.valueOf(playerStatCache.snapshot().deaths().size());
+        }
         if (params.equalsIgnoreCase("last_updated")) {
             return snapshot.updatedAt() == null ? "Never" : DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(snapshot.updatedAt().atOffset(ZoneOffset.UTC));
+        }
+        if (params.equalsIgnoreCase("stats_last_updated")) {
+            return playerStatCache.snapshot().updatedAt() == null ? "Never" : DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(playerStatCache.snapshot().updatedAt().atOffset(ZoneOffset.UTC));
         }
         if (params.equalsIgnoreCase("status")) {
             return cache.state().name().toLowerCase();
@@ -82,14 +80,12 @@ public final class PlaceholderHook extends PlaceholderExpansion {
         }
 
         String[] parts = params.split("_");
+        if (isStatTop(parts)) {
+            return statTopValue(parts, config);
+        }
         if (parts.length == 5 && parts[1].equalsIgnoreCase("top")) {
             String board = parts[0].toLowerCase();
-            int rank;
-            try {
-                rank = Integer.parseInt(parts[2]);
-            } catch (NumberFormatException ex) {
-                return "";
-            }
+            int rank = parseRank(parts[2]);
             if (rank < 1 || rank > config.topSize()) {
                 return "";
             }
@@ -99,10 +95,8 @@ public final class PlaceholderHook extends PlaceholderExpansion {
         }
         if (parts.length == 4 && parts[1].equalsIgnoreCase("top")) {
             String board = parts[0].toLowerCase();
-            int rank;
-            try {
-                rank = Integer.parseInt(parts[2]);
-            } catch (NumberFormatException ex) {
+            int rank = parseRank(parts[2]);
+            if (rank < 1 || rank > config.topSize()) {
                 return "";
             }
             Optional<DonorEntry> entry = board.equals("alltime") ? snapshot.topAlltime(rank) : snapshot.topMonthly(rank);
@@ -113,69 +107,53 @@ public final class PlaceholderHook extends PlaceholderExpansion {
         return "";
     }
 
-    private ColorRequest extractColor(String params) {
-        if (!params.toLowerCase().startsWith(COLOR_PREFIX)) {
-            return null;
-        }
-        String withoutPrefix = params.substring(COLOR_PREFIX.length());
-        int delimiter = withoutPrefix.indexOf('_');
-        if (delimiter <= 0 || delimiter == withoutPrefix.length() - 1) {
-            return null;
-        }
-        String rawColor = withoutPrefix.substring(0, delimiter);
-        String colorCode = parseColor(rawColor);
-        if (colorCode.isEmpty()) {
-            return null;
-        }
-        return new ColorRequest(colorCode, withoutPrefix.substring(delimiter + 1));
+    private boolean isStatTop(String[] parts) {
+        return parts.length == 4
+                && parts[1].equalsIgnoreCase("top")
+                && (parts[0].equalsIgnoreCase("kills") || parts[0].equalsIgnoreCase("deaths"));
     }
 
-    private String parseColor(String rawColor) {
-        String color = rawColor.trim();
-        Matcher hexTag = HEX_TAG.matcher(color);
-        if (hexTag.matches()) {
-            return legacyHex(hexTag.group(1));
+    private String statTopValue(String[] parts, DonorsConfig config) {
+        String board = parts[0].toLowerCase();
+        int rank = parseRank(parts[2]);
+        if (rank < 1 || rank > config.topSize()) {
+            return "";
         }
-        Matcher rawHex = RAW_HEX.matcher(color);
-        if (rawHex.matches()) {
-            return legacyHex(rawHex.group(1));
-        }
-        Matcher ampHex = AMP_HEX.matcher(color);
-        if (ampHex.matches()) {
-            return legacyHex(ampHex.group(1));
-        }
-        return translateLegacyCodes(color);
+        Optional<PlayerStatEntry> entry = board.equals("kills")
+                ? playerStatCache.snapshot().topKills(rank)
+                : playerStatCache.snapshot().topDeaths(rank);
+        return entry.map(stat -> statField(stat, board, parts[3], config))
+                .orElseGet(() -> emptyStatField(parts[3], config));
     }
 
-    private String translateLegacyCodes(String value) {
-        StringBuilder result = new StringBuilder(value.length());
-        for (int i = 0; i < value.length(); i++) {
-            char current = value.charAt(i);
-            if (current == '&' && i + 1 < value.length() && isLegacyCode(value.charAt(i + 1))) {
-                result.append('§').append(Character.toLowerCase(value.charAt(i + 1)));
-                i++;
-                continue;
-            }
-            if (current == '§' && i + 1 < value.length() && isLegacyCode(value.charAt(i + 1))) {
-                result.append('§').append(Character.toLowerCase(value.charAt(i + 1)));
-                i++;
-                continue;
-            }
-            result.append(current);
-        }
-        return result.toString();
+    private String statField(PlayerStatEntry stat, String board, String field, DonorsConfig config) {
+        return switch (field.toLowerCase()) {
+            case "name" -> stat.name();
+            case "uuid" -> stat.uuid().toString();
+            case "kills" -> String.valueOf(stat.kills());
+            case "deaths" -> String.valueOf(stat.deaths());
+            case "value", "amount" -> board.equals("kills") ? String.valueOf(stat.kills()) : String.valueOf(stat.deaths());
+            case "rank" -> board.equals("kills") ? String.valueOf(stat.killsRank()) : String.valueOf(stat.deathsRank());
+            default -> "";
+        };
     }
 
-    private boolean isLegacyCode(char code) {
-        return "0123456789abcdefklmnorABCDEFKLMNOR".indexOf(code) >= 0;
+    private String emptyStatField(String field, DonorsConfig config) {
+        return switch (field.toLowerCase()) {
+            case "name" -> config.emptyName();
+            case "uuid" -> "";
+            case "kills", "deaths", "value", "amount" -> "0";
+            case "rank" -> config.emptyRank();
+            default -> "";
+        };
     }
 
-    private String legacyHex(String hex) {
-        StringBuilder result = new StringBuilder("§x");
-        for (char c : hex.toLowerCase().toCharArray()) {
-            result.append('§').append(c);
+    private int parseRank(String value) {
+        try {
+            return Integer.parseInt(value);
+        } catch (NumberFormatException ex) {
+            return -1;
         }
-        return result.toString();
     }
 
     private String playerValue(OfflinePlayer player, String params, DonorCache.Snapshot snapshot, DonorsConfig config) {
@@ -211,8 +189,5 @@ public final class PlaceholderHook extends PlaceholderExpansion {
             case "rank" -> config.emptyRank();
             default -> "";
         };
-    }
-
-    private record ColorRequest(String colorCode, String remainingParams) {
     }
 }

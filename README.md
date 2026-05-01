@@ -53,28 +53,37 @@ Configure `tebex.api-key` with your Tebex server secret. The plugin uses `GET ht
 - `/enthusiadonors top monthly`
 - `/enthusiadonors debug <player>`
 
-## Colored Placeholders
+## Kill And Death Placeholders
 
-EnthusiaDonors does not add reset codes to placeholder values, so a color placed before a placeholder may work if the displaying plugin translates color codes after PlaceholderAPI.
+EnthusiaDonors imports existing Bukkit statistics for known players on startup, stores them in SQLite, updates them from live player death events, and exposes cached leaderboard placeholders.
 
-For reliable color output, use the built-in color wrapper:
+Top kills:
 
 ```text
-%enthusiadonors_color_&c_monthly_top_1_name%
-%enthusiadonors_color_#ff0000_monthly_top_1_amount%
-%enthusiadonors_color_<#ff0000>_monthly_top_1_uuid%
-%enthusiadonors_color_</#ff0000>_alltime_top_1_name%
+%enthusiadonors_kills_top_1_name%
+%enthusiadonors_kills_top_1_uuid%
+%enthusiadonors_kills_top_1_kills%
+%enthusiadonors_kills_top_1_value%
+%enthusiadonors_kills_top_1_rank%
 ```
 
-Supported color formats:
+Top deaths:
 
-- `&c`, `&6`, `&l`, and other regular legacy `&` codes
-- `#ff0000`
-- `&#ff0000`
-- `<#ff0000>`
-- `</#ff0000>`
+```text
+%enthusiadonors_deaths_top_1_name%
+%enthusiadonors_deaths_top_1_uuid%
+%enthusiadonors_deaths_top_1_deaths%
+%enthusiadonors_deaths_top_1_value%
+%enthusiadonors_deaths_top_1_rank%
+```
 
-The color wrapper works with any existing placeholder params after the color token.
+Ranks 1-10 use the same pattern. General stat placeholders:
+
+```text
+%enthusiadonors_kills_count%
+%enthusiadonors_deaths_count%
+%enthusiadonors_stats_last_updated%
+```
 
 ## Testing
 
