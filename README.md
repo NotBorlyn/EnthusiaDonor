@@ -40,6 +40,57 @@ The plugin jar is produced at `target/EnthusiaDonors-1.0.0.jar`.
 
 Public placeholders and JSON exports only include player UUID, player name, all-time amount, monthly amount, ranks, and last update time. Emails, transaction IDs, notes, gateway data, IPs, and raw payment objects are never exported.
 
+## Website Donor Leaderboard Export
+
+The plugin can upload a public-safe all-time donor leaderboard JSON file to Cloudflare R2 for the website to read through a Pages Function. The browser should call the website endpoint, not Tebex or R2 credentials directly.
+
+Recommended R2 object locations:
+
+```text
+r2://donator-leaderboard/leaderboards/donators-all-time.json
+r2://donator-leaderboard/leaderboards/index.json
+```
+
+Enable uploads in `config.yml`:
+
+```yaml
+r2:
+  enabled: true
+  account-id: "<cloudflare-account-id>"
+  endpoint: ""
+  access-key-id: "<r2-access-key-id>"
+  secret-access-key: "<r2-secret-access-key>"
+  bucket: "donator-leaderboard"
+  object-path: "leaderboards/donators-all-time.json"
+  index-object-path: "leaderboards/index.json"
+```
+
+`endpoint` can be left blank when `account-id` is set; the plugin will use `https://<account-id>.r2.cloudflarestorage.com`. The uploaded leaderboard shape is:
+
+```json
+{
+  "board": "donators-all-time",
+  "label": "Top Donators",
+  "statLabel": "Support",
+  "generatedAt": "2026-05-02T00:00:00Z",
+  "source": "EnthusiaDonators",
+  "order": "desc",
+  "players": [
+    {
+      "rank": 1,
+      "uuid": "player-uuid-here",
+      "username": "PlayerName",
+      "displayName": "PlayerName",
+      "value": 1000,
+      "formattedValue": "$1000.00",
+      "subtext": "All-time support"
+    }
+  ]
+}
+```
+
+Only public display data is uploaded: rank, UUID, username/display name, numeric value, formatted value, and subtext.
+
 ## Tebex API
 
 Configure `tebex.api-key` with your Tebex server secret. The plugin uses `GET https://plugin.tebex.io/payments?paged=1&page=N` with the `X-Tebex-Secret` header.

@@ -38,6 +38,37 @@ public final class JsonExportService {
         }
     }
 
+    public String donatorsAllTime(DonorCache.Snapshot snapshot, DonorCache cache, DonorsConfig config) {
+        JsonObject root = new JsonObject();
+        Instant generatedAt = snapshot.updatedAt() == null ? Instant.now() : snapshot.updatedAt();
+        root.addProperty("board", "donators-all-time");
+        root.addProperty("label", "Top Donators");
+        root.addProperty("statLabel", "Support");
+        root.addProperty("generatedAt", generatedAt.toString());
+        root.addProperty("source", "EnthusiaDonators");
+        root.addProperty("order", "desc");
+        root.add("players", websiteDonors(snapshot.alltime(), config.topSize(), cache, config));
+        return gson.toJson(root);
+    }
+
+    public String index(DonorCache.Snapshot snapshot, DonorsConfig config) {
+        Instant generatedAt = snapshot.updatedAt() == null ? Instant.now() : snapshot.updatedAt();
+        JsonObject board = new JsonObject();
+        board.addProperty("board", "donators-all-time");
+        board.addProperty("label", "Top Donators");
+        board.addProperty("statLabel", "Support");
+        board.addProperty("generatedAt", generatedAt.toString());
+        board.addProperty("path", config.r2ObjectPath());
+
+        JsonArray boards = new JsonArray();
+        boards.add(board);
+
+        JsonObject root = new JsonObject();
+        root.addProperty("generatedAt", generatedAt.toString());
+        root.add("boards", boards);
+        return gson.toJson(root);
+    }
+
     private JsonArray donors(List<DonorEntry> donors, int topSize, boolean alltime, DonorCache cache, DonorsConfig config) {
         JsonArray array = new JsonArray();
         donors.stream().limit(topSize).forEach(d -> {
@@ -47,6 +78,22 @@ public final class JsonExportService {
             object.addProperty("uuid", d.uuid().toString());
             object.addProperty("amount", cache.formatAmount(alltime ? d.alltimeTotal() : d.monthlyTotal(), config));
             object.addProperty("amountRaw", alltime ? d.alltimeTotal() : d.monthlyTotal());
+            array.add(object);
+        });
+        return array;
+    }
+
+    private JsonArray websiteDonors(List<DonorEntry> donors, int topSize, DonorCache cache, DonorsConfig config) {
+        JsonArray array = new JsonArray();
+        donors.stream().limit(topSize).forEach(d -> {
+            JsonObject object = new JsonObject();
+            object.addProperty("rank", d.alltimeRank());
+            object.addProperty("uuid", d.uuid().toString());
+            object.addProperty("username", d.name());
+            object.addProperty("displayName", d.name());
+            object.addProperty("value", d.alltimeTotal());
+            object.addProperty("formattedValue", cache.formatAmount(d.alltimeTotal(), config));
+            object.addProperty("subtext", "All-time support");
             array.add(object);
         });
         return array;
