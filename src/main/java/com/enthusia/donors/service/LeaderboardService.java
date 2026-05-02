@@ -4,6 +4,7 @@ import com.enthusia.donors.cache.DonorCache;
 import com.enthusia.donors.config.ConfigManager;
 import com.enthusia.donors.config.DonorsConfig;
 import com.enthusia.donors.export.JsonExportService;
+import com.enthusia.donors.export.R2UploadService;
 import com.enthusia.donors.model.DonorEntry;
 import com.enthusia.donors.model.PaymentRecord;
 import com.enthusia.donors.model.RefreshState;
@@ -32,6 +33,7 @@ public final class LeaderboardService {
     private final TebexClient tebexClient;
     private final DonorCache cache;
     private final JsonExportService jsonExportService;
+    private final R2UploadService r2UploadService;
     private final ExecutorService ioExecutor;
     private BukkitTask refreshTask;
 
@@ -41,7 +43,8 @@ public final class LeaderboardService {
             DonorRepository repository,
             TebexClient tebexClient,
             DonorCache cache,
-            JsonExportService jsonExportService
+            JsonExportService jsonExportService,
+            R2UploadService r2UploadService
     ) {
         this.plugin = plugin;
         this.logger = plugin.getLogger();
@@ -50,6 +53,7 @@ public final class LeaderboardService {
         this.tebexClient = tebexClient;
         this.cache = cache;
         this.jsonExportService = jsonExportService;
+        this.r2UploadService = r2UploadService;
         this.ioExecutor = Executors.newSingleThreadExecutor(new NamedThreadFactory("EnthusiaDonors-IO"));
     }
 
@@ -114,7 +118,13 @@ public final class LeaderboardService {
                 List<DonorEntry> totals = repository.rebuildTotals(config, refreshData.extraExcludedPaymentIdHashes());
                 Instant updated = Instant.now();
                 cache.replace(totals, updated, finalSuccessState);
-                jsonExportService.export(cache.snapshot(), cache, config);
+                DonorCache.Snapshot snapshot = cache.snapshot();
+                jsonExportService.export(snapshot, cache, config);
+                r2UploadService.upload(
+                        config,
+                        jsonExportService.donatorsAllTime(snapshot, cache, config),
+                        jsonExportService.index(snapshot, config)
+                );
                 logger.info("Donor refresh complete. Imported/updated " + written + " payments; " + totals.size() + " donors cached.");
             } catch (Exception ex) {
                 cache.markFailure("Cache update failed");

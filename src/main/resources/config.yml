@@ -36,6 +36,16 @@ cache:
   save-json-export: false
   json-export-path: "plugins/EnthusiaDonors/public/donors.json"
 
+r2:
+  enabled: false
+  account-id: ""
+  endpoint: ""
+  access-key-id: ""
+  secret-access-key: ""
+  bucket: "donator-leaderboard"
+  object-path: "leaderboards/donators-all-time.json"
+  index-object-path: "leaderboards/index.json"
+
 privacy:
   expose-raw-payment-data: false
   hash-payment-ids: true

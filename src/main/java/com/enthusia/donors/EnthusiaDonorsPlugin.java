@@ -5,6 +5,7 @@ import com.enthusia.donors.cache.PlayerStatCache;
 import com.enthusia.donors.command.DonorCommand;
 import com.enthusia.donors.config.ConfigManager;
 import com.enthusia.donors.export.JsonExportService;
+import com.enthusia.donors.export.R2UploadService;
 import com.enthusia.donors.placeholder.PlaceholderHook;
 import com.enthusia.donors.service.LeaderboardService;
 import com.enthusia.donors.service.PlayerStatService;
@@ -36,7 +37,8 @@ public final class EnthusiaDonorsPlugin extends JavaPlugin {
                 repository,
                 new TebexClient(getLogger()),
                 cache,
-                new JsonExportService(getLogger())
+                new JsonExportService(getLogger()),
+                new R2UploadService(getLogger())
         );
         leaderboardService.start();
 

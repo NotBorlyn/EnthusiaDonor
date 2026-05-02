@@ -63,6 +63,14 @@ public final class ConfigManager {
                 c.getBoolean("cache.use-sqlite", true),
                 c.getBoolean("cache.save-json-export", false),
                 jsonPath,
+                c.getBoolean("r2.enabled", false),
+                c.getString("r2.account-id", ""),
+                c.getString("r2.endpoint", ""),
+                c.getString("r2.access-key-id", ""),
+                c.getString("r2.secret-access-key", ""),
+                c.getString("r2.bucket", "donator-leaderboard"),
+                c.getString("r2.object-path", "leaderboards/donators-all-time.json"),
+                c.getString("r2.index-object-path", "leaderboards/index.json"),
                 c.getBoolean("privacy.expose-raw-payment-data", false),
                 c.getBoolean("privacy.hash-payment-ids", true),
                 c.getBoolean("testing.fake-data-enabled", false),
@@ -80,6 +88,9 @@ public final class ConfigManager {
         }
         if (!"tebex_payments_only".equalsIgnoreCase(config.countingSource())) {
             plugin.getLogger().warning("counting.source is forced to tebex_payments_only; ranks, groups, and permissions are never used for donor totals.");
+        }
+        if (config.r2UploadEnabled() && !r2Configured(config)) {
+            plugin.getLogger().warning("r2.enabled=true but R2 credentials are incomplete; donor leaderboard upload will be skipped.");
         }
     }
 
@@ -118,5 +129,18 @@ public final class ConfigManager {
         } catch (Exception ex) {
             throw new IllegalStateException("Unable to hash excluded Tebex transaction ID", ex);
         }
+    }
+
+    private boolean r2Configured(DonorsConfig config) {
+        boolean hasEndpoint = !blank(config.r2Endpoint()) || !blank(config.r2AccountId());
+        return hasEndpoint
+                && !blank(config.r2AccessKeyId())
+                && !blank(config.r2SecretAccessKey())
+                && !blank(config.r2Bucket())
+                && !blank(config.r2ObjectPath());
+    }
+
+    private boolean blank(String value) {
+        return value == null || value.isBlank();
     }
 }
